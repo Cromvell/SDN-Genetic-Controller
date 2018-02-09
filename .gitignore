@@ -1,0 +1,5 @@
+# Python cache folder
+/__pycache__/
+
+# Program logs
+*.log
