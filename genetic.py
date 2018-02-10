@@ -38,7 +38,7 @@ def cross(parents, lenOfChromosome):
 
         del parents[p1]
         if p2 < p1:
-            del parents[p2] 
+            del parents[p2]
         else:
             del parents[p2 - 1] # After deleting parents[p2] index p1 might be shifted
 
@@ -83,7 +83,21 @@ def chooseTheBest(fitness):
 
     return maximum
 
-def outputInfo(info, lengthOfChromosome, sizeOfPopulation, generationNumber, outputFile, closeFile = False):
+def isAlgorithmDone(fitness, proportion):
+    '''Calculate stop condition'''
+    bestOne = chooseTheBest(fitness)
+
+    count = 0
+    for i in range(0, len(fitness)):
+        if fitness[i] == bestOne:
+            count += 1
+
+    if count / len(fitness) >= proportion:
+        return True
+    else:
+        return False
+
+def outputInfo(info, lengthOfChromosome, sizeOfPopulation, generationNumber, outputFile):
     '''Show information about generation'''
 
     outputFile.write('\nGeneration #{0}:\n'.format(generationNumber))
@@ -96,14 +110,15 @@ def outputInfo(info, lengthOfChromosome, sizeOfPopulation, generationNumber, out
                                                          '{0:0{1}b}({0})'.format(info[2][i], lengthOfChromosome), \
                                                          '{0:0{1}b}({0})'.format(info[3][i], lengthOfChromosome), \
                                                          lengthOfChromosome))
-    if closeFile: outputFile.close()
 
+# TODO: Add full customisation (fitness parameters, mutation rate, proportion of stop condition, select stop conditon(gen number or proporitonal stop conditions))
 def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopulation = 100, generateInfoFile = False):
     '''Execute genetic algorithm'''
     if generateInfoFile:
         genInfo = []
         outFile = open('output.log', 'w')
-    genNumber = 1
+
+    genNumber = 0
     random.seed()
 
     # Population initialisation
@@ -111,27 +126,26 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
     for i in range(0, sizeOfPopulation):
         population.append(random.getrandbits(lengthOfChromosome))
 
-    # TODO: Do algorithm without break
     while True:
-        if generateInfoFile: genInfo.append(population[:])
+        if generateInfoFile:
+            genInfo.append(population[:])
 
         # Fitness calculation
         fitness = []
         for i in population:
             fitness.append(fitnessFunction(i / 100.0))
-        if generateInfoFile: genInfo.append(fitness[:])
-
-        # Stop condition
-        if genNumber >= 100: break
+        if generateInfoFile:
+            genInfo.append(fitness[:])
 
         # Selection
         parents = select(population, fitness)
-        if generateInfoFile: genInfo.append(parents[:])
+        if generateInfoFile:
+            genInfo.append(parents[:])
 
         # Crossing
         population = cross(parents, lengthOfChromosome)
-        if generateInfoFile: genInfo.append(population[:])
-
+        if generateInfoFile:
+            genInfo.append(population[:])
 
         # Mutation
         if generateInfoFile:
@@ -139,11 +153,18 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
         else:
             mutation(population, lengthOfChromosome, 0.01)
 
-        if generateInfoFile: outputInfo(genInfo, lengthOfChromosome, sizeOfPopulation, genNumber, outFile, True if genNumber >= 99 else False)
+        genNumber += 1
+
+        # Output information list
+        if generateInfoFile:
+            outputInfo(genInfo, lengthOfChromosome, sizeOfPopulation, genNumber, outFile)
 
         # Clear information list
-        if generateInfoFile: del genInfo[:]
+        if generateInfoFile:
+            del genInfo[:]
 
-        genNumber += 1
+        if isAlgorithmDone(fitness, 0.55):
+            outFile.close()
+            break
 
     return chooseTheBest(fitness)
