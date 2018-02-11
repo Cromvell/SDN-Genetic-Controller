@@ -75,18 +75,20 @@ def mutation(population, lengthOfChromosome, chanceOfMutation, outputEnable = Fa
             if outputEnable:
                 outputFile.write('!!! MUTATION !!! Before: {0:b}({0}) After: {1:b}({1})\n'.format(before, population[i]))
 
-def chooseTheBest(fitness):
+def chooseTheBest(fitness, population):
     '''Choose the best person from population'''
     maximum = fitness[0]
+    maximumI = 0
     for i in range(1, len(fitness)):
         if fitness[i] > maximum:
             maximum = fitness[i]
+            maximumI = i
 
-    return maximum
+    return population[maximumI]
 
 def isAlgorithmDone(fitness, proportion):
     '''Calculate stop condition'''
-    bestOne = chooseTheBest(fitness)
+    bestOne = max(fitness)
 
     count = 0
     for i in range(0, len(fitness)):
@@ -168,4 +170,4 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
                 outFile.close()
             break
 
-    return chooseTheBest(fitness)
+    return chooseTheBest(fitness, population)
