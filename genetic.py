@@ -72,7 +72,8 @@ def mutation(population, lengthOfChromosome, chanceOfMutation, outputEnable = Fa
             before = population[i]
             mutatNumber = 1 << random.randrange(0, lengthOfChromosome + 1, 1)
             population[i] = population[i] ^ mutatNumber
-            if outputEnable: outputFile.write('!!! MUTATION !!! Before: {0:b}({0}) After: {1:b}({1})\n'.format(before, population[i]))
+            if outputEnable:
+                outputFile.write('!!! MUTATION !!! Before: {0:b}({0}) After: {1:b}({1})\n'.format(before, population[i]))
 
 def chooseTheBest(fitness):
     '''Choose the best person from population'''
@@ -111,8 +112,7 @@ def outputInfo(info, lengthOfChromosome, sizeOfPopulation, generationNumber, out
                                                          '{0:0{1}b}({0})'.format(info[3][i], lengthOfChromosome), \
                                                          lengthOfChromosome))
 
-# TODO: Add full customisation (fitness parameters, mutation rate, proportion of stop condition, select stop conditon(gen number or proporitonal stop conditions))
-def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopulation = 100, generateInfoFile = False):
+def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopulation = 100, mutationRate = 0.01, stopRatio = 0.55, generateInfoFile = False):
     '''Execute genetic algorithm'''
     if generateInfoFile:
         genInfo = []
@@ -133,7 +133,7 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
         # Fitness calculation
         fitness = []
         for i in population:
-            fitness.append(fitnessFunction(i / 100.0))
+            fitness.append(fitnessFunction(i))
         if generateInfoFile:
             genInfo.append(fitness[:])
 
@@ -149,9 +149,9 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
 
         # Mutation
         if generateInfoFile:
-            mutation(population, lengthOfChromosome, 0.01, True, outFile)
+            mutation(population, lengthOfChromosome, mutationRate, True, outFile)
         else:
-            mutation(population, lengthOfChromosome, 0.01)
+            mutation(population, lengthOfChromosome, mutationRate)
 
         genNumber += 1
 
@@ -163,8 +163,9 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
         if generateInfoFile:
             del genInfo[:]
 
-        if isAlgorithmDone(fitness, 0.55):
-            outFile.close()
+        if isAlgorithmDone(fitness, stopRatio):
+            if generateInfoFile:
+                outFile.close()
             break
 
     return chooseTheBest(fitness)
