@@ -126,6 +126,7 @@ def SDNFitnessFun(person):
     return float(sum)
 
 def inputParameter(msg, errorMsg, lowestValid):
+    '''Helps input SDN parameters'''
     while True:
         try:
             parameter = int(input(msg))
@@ -138,7 +139,6 @@ def inputParameter(msg, errorMsg, lowestValid):
             continue
         else:
             break
-
 
     return parameter
 
@@ -161,9 +161,13 @@ nodes = []
 for i in range(0, nodesNumber):
     nodes.append(i)
 
-sumExecutionTimes = 0
+sumTotalExecutionTimes = 0
+sumGAExecutionTimes = 0
+sumPrepareExecutionTimes = 0
 print("--------------------------------------------------------------------")
 for iteration in range(0, 100):
+    print("ITERATION #{0}".format(iteration))
+
     # Generate links
     links = []
     for i in range(0, linksNumber):
@@ -198,20 +202,19 @@ for iteration in range(0, 100):
         streamReqCapacity = random.randint(1, maxLinkCapacity // 2)
         streams.append(tuple([nodeFirst, nodeSecond, streamReqCapacity]))
 
-    print("Generated data:")
-    print(nodes)
-    print(links)
-    print(linksCapacities)
-    print(streams)
+    print("\nGenerated data:")
+    print("Nodes: {0}".format(nodes))
+    print("Links: {0}".format(links))
+    print("Links capacities: {0}".format(linksCapacities))
+    print("Streams (src, trg, reqCapacity): {0}".format(streams))
 
-    # Fix time of algorithm start
-    startTime = datetime.datetime.now()
+    # Fix time of preparing algorithms start
+    prepareStartTime = datetime.datetime.now()
 
     # Find paths for current streams
     streamsPaths = []
     for s in streams:
         baz = findAllPaths(nodes, links, s[0], s[1])[:]
-        # print(baz)
         streamsPaths.append(baz)
 
     # Calculate array of path variants numbers for util purposes
@@ -223,22 +226,35 @@ for iteration in range(0, 100):
     numberStreams = len(streams)
     numberBitsInGenotype = getBitsNum(max(numbersPaths), numberStreams)
 
-    # Execution of genetic algorithm and receive answer from it
+    # Fix time of preparing algorithms stop and fix time of the GA start
+    prepareStopTime = datetime.datetime.now()
+    GAStartTime = datetime.datetime.now()
+
+    # Execution of the genetic algorithm and receive answer from it
     answer = genetic.executeGeneticAlgoritm(SDNFitnessFun, numberBitsInGenotype, 100, 0.01, 0.75, True)
     phenotype = decodeGenotype(answer)
 
-    # Fix time of algorithm stop and calculate execution time
-    stopTime = datetime.datetime.now()
-    executionTime = (stopTime - startTime).total_seconds()
-    sumExecutionTimes += executionTime
+    # Fix time of the GA stop and calculate execution times
+    GAStopTime = datetime.datetime.now()
+    executionPrepareTime = (prepareStopTime - prepareStartTime).total_seconds()
+    executionGATime = (GAStopTime - GAStartTime).total_seconds()
+    totalExecutionTime = (GAStopTime - prepareStartTime).total_seconds()
+
+    sumPrepareExecutionTimes += executionPrepareTime
+    sumGAExecutionTimes += executionGATime
+    sumTotalExecutionTimes += totalExecutionTime
 
     paths = []
     for i in range(0, len(phenotype)):
         paths.append(streamsPaths[i][phenotype[i]])
 
     print("\nBest selection of paths: {0}".format(paths))
-    print("\nExecution time equal {0:.6} milliseconds".format(executionTime * 1000))
+    print("\nExecution time of prepare algorithms equal {0:.6} milliseconds".format(executionPrepareTime * 1000))
+    print("Execution time of the genetic algorithm equal {0:.6} milliseconds".format(executionGATime * 1000))
+    print("Total execution time equal {0:.6} milliseconds".format(totalExecutionTime * 1000))
     print("--------------------------------------------------------------------")
 
 print("\nSUMMARY:")
-print("Average execution time equal {0:.6} milliseconds".format(sumExecutionTimes * 1000 / 100))
+print("Average execution time of prepare algorithms equal {0:.6} milliseconds".format(sumPrepareExecutionTimes * 1000 / 100))
+print("Average execution time of the genetic algorithm equal {0:.6} milliseconds".format(sumGAExecutionTimes * 1000 / 100))
+print("Average total execution time equal {0:.6} milliseconds".format(sumTotalExecutionTimes * 1000 / 100))
