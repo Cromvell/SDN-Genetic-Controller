@@ -1,23 +1,17 @@
 import genetic
-import math
-import queue
 import random
 import datetime
 from datetime import timedelta
 
-# Test fitness function
-def fitnessFun(x):
-    return 1/((x / 100 - 15) ** 6 + 0.2) - math.sin(x / 100) + 1
-
-
 def findAllPathsUtil(nodes, links, visited, node, goal, path, paths):
+    '''Recursive function for finding all paths for stream'''
     visited[node] = True
     path.append(node)
 
     if goal == node:
         paths.append(path[:])
     else:
-        for child in expand(node, links):
+        for child in getChildren(node, links):
             if visited[child] == False:
                 findAllPathsUtil(nodes, links, visited, child, goal, path, paths)
 
@@ -25,6 +19,7 @@ def findAllPathsUtil(nodes, links, visited, node, goal, path, paths):
     visited[node] = False
 
 def findAllPaths(nodes, links, startNode, goalNode):
+    '''Function, that starts recursive searching all paths for stream'''
     visited = []
     for n in nodes:
         visited.append(False)
@@ -36,7 +31,8 @@ def findAllPaths(nodes, links, startNode, goalNode):
 
     return paths
 
-def expand(node, links):
+def getChildren(node, links):
+    '''Return all children of node in graph'''
     children = []
     for l in links:
         if l[0] == node:
@@ -47,6 +43,7 @@ def expand(node, links):
     return children
 
 def getBitsNum(numPaths, numStreams):
+    '''Return number of bits, that required for genotype of chromosome'''
     powerTwo = 1
     num = 2
     while numPaths > num:
@@ -55,6 +52,7 @@ def getBitsNum(numPaths, numStreams):
     return powerTwo * numStreams
 
 def bonusCoeffFun(load):
+    '''Function of bonus coefficient, that needed for correct work of GA'''
     if load <= 0.25:
         return 40
     else:
@@ -64,6 +62,7 @@ def bonusCoeffFun(load):
             return 5
 
 def decodeGenotype(person):
+    '''Decoding genotype into array of path indexes'''
     global numberStreams
     global streamsPaths
     personBinaryLenght = person.bit_length()
@@ -94,9 +93,8 @@ def decodeGenotype(person):
 
     return phenotype
 
-
-# Custom controller fitness function
 def SDNFitnessFun(person):
+    '''Custom controller fitness function'''
     global links
     global linksCapacities
     global streams
@@ -127,20 +125,36 @@ def SDNFitnessFun(person):
         sum += bonusCoeffFun(linksLoad[i])
     return float(sum)
 
+def inputParameter(msg, errorMsg, lowestValid):
+    while True:
+        try:
+            parameter = int(input(msg))
+            if lowestValid != None:
+                if parameter < lowestValid:
+                    print(errorMsg)
+                    continue
+        except ValueError:
+            print(errorMsg)
+            continue
+        else:
+            break
 
-'''
-nodes = [0, 1, 2, 3, 4]
-links = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (0, 3), (0, 4)]
-linksCapacities = [60, 45, 40, 70, 65, 65, 50]
-streams = [(0, 1, 10), (2, 0, 16), (2, 1, 25)] # Stream: (srcNode, trgNode, capacityRequired)
-'''
+
+    return parameter
+
+
+#
+# __main__
+#
 random.seed()
 
-nodesNumber = 10
-linksNumber = 20
-minLinkCapacity = 20
-maxLinkCapacity = 100
-streamsNumber = 3
+# Input parameters of SDN
+print("Welcome to SDN Genetic Algorithm benchmark!")
+nodesNumber = inputParameter("Enter number of nodes in SDN(>=3): ", "Please, enter valid number of nodes", 3)
+linksNumber = inputParameter("Enter number of links in SDN(must be not less than the number of nodes): ", "Please, enter valid number of links", nodesNumber) # ! linksNumber >= nodesNumber
+minLinkCapacity = inputParameter("Enter minimum link capacity(must be not less than 10): ", "Please, enter valid number of minimum link capacity", 10)
+maxLinkCapacity = inputParameter("Enter maximum link capacity(>(minLinkCap + 20)): ", "Please, enter valid number of maximum link capacity", minLinkCapacity + 20)
+streamsNumber = inputParameter("Enter number of streams in SDN(>=2): ", "Please, enter valid number of streams", 2) #TODO: Fix issue with one stream in the network
 
 # Generate nodes
 nodes = []
@@ -154,10 +168,17 @@ for iteration in range(0, 100):
     links = []
     for i in range(0, linksNumber):
         while True:
-            nodeFirst = random.randint(0, nodesNumber - 1)
-            nodeSecond = random.randint(0, nodesNumber - 1)
-            while nodeFirst == nodeSecond:
+            # At first we connected all nodes together, further we use random generation
+            if i < nodesNumber:
+                nodeFirst = nodes[i]
+            else:
+                nodeFirst = random.randint(0, nodesNumber - 1)
+            if i < nodesNumber - 1:
+                nodeSecond = nodes[i + 1]
+            else:
                 nodeSecond = random.randint(0, nodesNumber - 1)
+                while nodeFirst == nodeSecond:
+                    nodeSecond = random.randint(0, nodesNumber - 1)
             if not ((nodeFirst, nodeSecond) in links or (nodeSecond, nodeFirst) in links):
                 break
         links.append(tuple([nodeFirst, nodeSecond]))
@@ -177,7 +198,7 @@ for iteration in range(0, 100):
         streamReqCapacity = random.randint(1, maxLinkCapacity // 2)
         streams.append(tuple([nodeFirst, nodeSecond, streamReqCapacity]))
 
-    print("Input data:")
+    print("Generated data:")
     print(nodes)
     print(links)
     print(linksCapacities)
