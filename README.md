@@ -1,1 +1,1 @@
-This meant to be custom SDN controller project with genetics and bitches, of course.
+This meant to be application to SDN controller nox/pox/something else that routes streams in network, based result on genetic algorithm logic.
