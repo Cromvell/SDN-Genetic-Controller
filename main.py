@@ -8,12 +8,13 @@ def findAllPathsUtil(nodes, links, visited, node, goal, path, paths):
     visited[node] = True
     path.append(node)
 
-    if goal == node:
-        paths.append(path[:])
-    else:
-        for child in getChildren(node, links):
-            if visited[child] == False:
-                findAllPathsUtil(nodes, links, visited, child, goal, path, paths)
+    if len(path) <= 3: # Condition for restriction path length (3 nodes: src -> med -> trg)
+        if goal == node:
+            paths.append(path[:])
+        else:
+            for child in getChildren(node, links):
+                if visited[child] == False:
+                    findAllPathsUtil(nodes, links, visited, child, goal, path, paths)
 
     path.pop()
     visited[node] = False
@@ -51,15 +52,30 @@ def getBitsNum(numPaths, numStreams):
         num *= 2
     return powerTwo * numStreams
 
-def bonusCoeffFun(load):
+def penaltyFun(load):
     '''Function of bonus coefficient, that needed for correct work of GA'''
-    if load <= 0.25:
-        return 40
+    if load <= 0.05:
+        return 0
     else:
-        if load <= 0.75:
-            return 15
-        else:
+        if load <= 0.25:
             return 5
+        else:
+            if load <= 0.5:
+                return 10
+            else:
+                if load <= 0.75:
+                    return 50
+                else:
+                    if load < 1:
+                        return 150
+                    else:
+                        if load < 2:
+                            return 500
+                        else:
+                            if load < 3:
+                                return 1000
+                            else:
+                                return 10000
 
 def decodeGenotype(person):
     '''Decoding genotype into array of path indexes'''
@@ -93,15 +109,11 @@ def decodeGenotype(person):
 
     return phenotype
 
-def SDNFitnessFun(person):
-    '''Custom controller fitness function'''
+def getLinksLoad(phenotype):
     global links
     global linksCapacities
     global streams
     global streamsPaths
-
-    # Decode genotype
-    phenotype = decodeGenotype(person)
 
     # Select paths corresponding to phenotype
     paths = []
@@ -120,10 +132,23 @@ def SDNFitnessFun(person):
                     sum += streams[j][2]
         linksLoad[i] = sum / linksCapacities[i]
 
+    return linksLoad
+
+def SDNFitnessFun(person):
+    '''Custom controller fitness function'''
+    global linksCapacities
+
+    # Decode genotype
+    phenotype = decodeGenotype(person)
+
+    # Calculate load for each link
+    linksLoad = getLinksLoad(phenotype)
+
     sum = 0
     for i in range(0, len(linksLoad)):
-        sum += bonusCoeffFun(linksLoad[i])
-    return float(sum)
+        sum += linksLoad[i]
+    avr = sum / len(linksLoad)
+    return float(penaltyFun(avr))
 
 def inputParameter(msg, errorMsg, lowestValid):
     '''Helps input SDN parameters'''
@@ -151,41 +176,59 @@ random.seed()
 # Input parameters of SDN
 print("Welcome to SDN Genetic Algorithm benchmark!")
 nodesNumber = inputParameter("Enter number of nodes in SDN(>=3): ", "Please, enter valid number of nodes", 3)
-linksNumber = inputParameter("Enter number of links in SDN(must be not less than the number of nodes): ", "Please, enter valid number of links", nodesNumber) # ! linksNumber >= nodesNumber
+linksNumber = 0 # We assign value after generation full topology (linksNumber >= nodesNumber)
 minLinkCapacity = inputParameter("Enter minimum link capacity(must be not less than 10): ", "Please, enter valid number of minimum link capacity", 10)
 maxLinkCapacity = inputParameter("Enter maximum link capacity(>(minLinkCap + 20)): ", "Please, enter valid number of maximum link capacity", minLinkCapacity + 20)
 streamsNumber = inputParameter("Enter number of streams in SDN(>=2): ", "Please, enter valid number of streams", 2) #TODO: Fix issue with one stream in the network
+
 
 # Generate nodes
 nodes = []
 for i in range(0, nodesNumber):
     nodes.append(i)
 
+'''
+# Generate random-connected network links
+links = []
+for i in range(0, linksNumber):
+    while True:
+        # At first we connected all nodes together, further we use random generation
+        if i < nodesNumber:
+            nodeFirst = nodes[i]
+        else:
+            nodeFirst = random.randint(0, nodesNumber - 1)
+        if i < nodesNumber - 1:
+            nodeSecond = nodes[i + 1]
+        else:
+            nodeSecond = random.randint(0, nodesNumber - 1)
+            while nodeFirst == nodeSecond:
+                nodeSecond = random.randint(0, nodesNumber - 1)
+        if not ((nodeFirst, nodeSecond) in links or (nodeSecond, nodeFirst) in links):
+            break
+    links.append(tuple([nodeFirst, nodeSecond]))
+'''
+
+# Generate full-connected network links
+links = []
+for i in range(0, nodesNumber):
+    for j in range(0, nodesNumber):
+        if i != j and not ((i, j) in links or (j, i) in links):
+            links.append(tuple([i, j]))
+
+# And at now we can gen number of links
+linksNumber = len(links)
+
 sumTotalExecutionTimes = 0
 sumGAExecutionTimes = 0
 sumPrepareExecutionTimes = 0
+firstBest = 0
+inadequateCount = 0
 print("--------------------------------------------------------------------")
+#
+# Algorithm test loop
+#
 for iteration in range(0, 100):
     print("ITERATION #{0}".format(iteration))
-
-    # Generate links
-    links = []
-    for i in range(0, linksNumber):
-        while True:
-            # At first we connected all nodes together, further we use random generation
-            if i < nodesNumber:
-                nodeFirst = nodes[i]
-            else:
-                nodeFirst = random.randint(0, nodesNumber - 1)
-            if i < nodesNumber - 1:
-                nodeSecond = nodes[i + 1]
-            else:
-                nodeSecond = random.randint(0, nodesNumber - 1)
-                while nodeFirst == nodeSecond:
-                    nodeSecond = random.randint(0, nodesNumber - 1)
-            if not ((nodeFirst, nodeSecond) in links or (nodeSecond, nodeFirst) in links):
-                break
-        links.append(tuple([nodeFirst, nodeSecond]))
 
     # Generate link capacities
     linksCapacities = []
@@ -231,7 +274,7 @@ for iteration in range(0, 100):
     GAStartTime = datetime.datetime.now()
 
     # Execution of the genetic algorithm and receive answer from it
-    answer = genetic.executeGeneticAlgoritm(SDNFitnessFun, numberBitsInGenotype, 100, 0.01, 0.75, True)
+    answer = genetic.executeGeneticAlgoritm(SDNFitnessFun, numberBitsInGenotype, 100, 0.01, True, firstBest)
     phenotype = decodeGenotype(answer)
 
     # Fix time of the GA stop and calculate execution times
@@ -248,7 +291,42 @@ for iteration in range(0, 100):
     for i in range(0, len(phenotype)):
         paths.append(streamsPaths[i][phenotype[i]])
 
+    '''
+    # Get fitnesses before and arter optimisation
+    randomSolutionFitness = SDNFitnessFun(firstBest)
+    bestSolutionFitness = SDNFitnessFun(answer)
+
+    if randomSolutionFitness < bestSolutionFitness:
+        inadequateCount += 1
+    '''
+
+    # Calculate network loads before and after optimisation
+    # At first we get arrays of links load
+    randomSolutionLinksLoad = getLinksLoad(decodeGenotype(firstBest))
+    bestSolutionLinksLoad = getLinksLoad(decodeGenotype(answer))
+
+    # Then calculate sums of links load
+    randomSolutionTotalLinksLoad = 0
+    bestSolutionTotalLinksLoad = 0
+    for i in range(0, len(links)):
+        randomSolutionTotalLinksLoad += randomSolutionLinksLoad[i]
+        bestSolutionTotalLinksLoad += bestSolutionLinksLoad[i]
+
+    # And finally, calculate network loads how average links load
+    randomSolutionLoad = randomSolutionTotalLinksLoad  / linksNumber * 100
+    bestSolutionLoad = bestSolutionTotalLinksLoad / linksNumber * 100
+    
+    if randomSolutionLoad < bestSolutionLoad:
+        inadequateCount += 1
+
+    outputLinkLoads = getLinksLoad(phenotype)
+    for i in range(0, len(outputLinkLoads)):
+        outputLinkLoads[i] = round(outputLinkLoads[i], 1) * 100
+
     print("\nBest selection of paths: {0}".format(paths))
+    print("Link loads (%): {0}".format(outputLinkLoads))
+    print("Average links load for random generation: {0:.4} %".format(randomSolutionLoad))
+    print("Average links load for selected paths: {0:.4} %".format(bestSolutionLoad))
     print("\nExecution time of prepare algorithms equal {0:.6} milliseconds".format(executionPrepareTime * 1000))
     print("Execution time of the genetic algorithm equal {0:.6} milliseconds".format(executionGATime * 1000))
     print("Total execution time equal {0:.6} milliseconds".format(totalExecutionTime * 1000))
@@ -258,3 +336,4 @@ print("\nSUMMARY:")
 print("Average execution time of prepare algorithms equal {0:.6} milliseconds".format(sumPrepareExecutionTimes * 1000 / 100))
 print("Average execution time of the genetic algorithm equal {0:.6} milliseconds".format(sumGAExecutionTimes * 1000 / 100))
 print("Average total execution time equal {0:.6} milliseconds".format(sumTotalExecutionTimes * 1000 / 100))
+print("Number of inadequate results: {0}".format(inadequateCount))

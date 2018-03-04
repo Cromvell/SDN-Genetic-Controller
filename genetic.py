@@ -9,11 +9,15 @@ def select(chromosomes, fitness):
 
     sectors = []
     for i in range(0, lenfit):
-        sectors.append(fitness[i] * 100 / fitSum)
+        sectors.append(1 / (fitness[i] / fitSum * 100))
+
+    sectorsSum = 0
+    for i in range(0, len(sectors)):
+        sectorsSum += sectors[i]
 
     parents = []
     for i in range(0, lenfit):
-        rnd = random.randrange(0, 100, 1)
+        rnd = random.uniform(0, sectorsSum)
         angle = 0
         j = 0
         while True:
@@ -77,18 +81,23 @@ def mutation(population, lengthOfChromosome, chanceOfMutation, outputEnable = Fa
 
 def chooseTheBest(fitness, population):
     '''Choose the best person from population'''
-    maximum = fitness[0]
-    maximumI = 0
+    minimum = fitness[0]
+    minimumI = 0
     for i in range(1, len(fitness)):
-        if fitness[i] > maximum:
-            maximum = fitness[i]
-            maximumI = i
+        if fitness[i] < minimum:
+            minimum = fitness[i]
+            minimumI = i
 
-    return population[maximumI]
+    return population[minimumI]
 
+'''
+
+    EXPERIMENTAL
+
+'''
 def isAlgorithmDone(fitness, proportion):
     '''Calculate stop condition'''
-    bestOne = max(fitness)
+    bestOne = min(fitness)
 
     count = 0
     for i in range(0, len(fitness)):
@@ -114,7 +123,7 @@ def outputInfo(info, lengthOfChromosome, sizeOfPopulation, generationNumber, out
                                                          '{0:0{1}b}({0})'.format(info[3][i], lengthOfChromosome), \
                                                          lengthOfChromosome))
 
-def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopulation = 100, mutationRate = 0.01, stopRatio = 0.55, generateInfoFile = False):
+def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopulation = 100, mutationRate = 0.01, generateInfoFile = False, bestOfFirsts = None):
     '''Execute genetic algorithm'''
     if generateInfoFile:
         genInfo = []
@@ -128,6 +137,7 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
     for i in range(0, sizeOfPopulation):
         population.append(random.getrandbits(lengthOfChromosome))
 
+    firstIteration = True
     while True:
         if generateInfoFile:
             genInfo.append(population[:])
@@ -138,6 +148,11 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
             fitness.append(fitnessFunction(i))
         if generateInfoFile:
             genInfo.append(fitness[:])
+
+        # Save best person of random generation to output variable
+        if firstIteration and bestOfFirsts != None:
+            bestOfFirsts = chooseTheBest(fitness, population)
+            firstIteration = False
 
         # Selection
         parents = select(population, fitness)
@@ -165,9 +180,19 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
         if generateInfoFile:
             del genInfo[:]
 
+        if genNumber >= 100:
+            if generateInfoFile:
+                outFile.close()
+            break
+        ''' 
+
+        EXPERIMENTAL
+        stopRatio = .55
+        # It's stop condition that activate when population assimilated
         if isAlgorithmDone(fitness, stopRatio):
             if generateInfoFile:
                 outFile.close()
             break
+        '''
 
     return chooseTheBest(fitness, population)
