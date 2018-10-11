@@ -4,6 +4,7 @@ def select(chromosomes, fitness):
     '''Doing selection'''
     fitSum = 0
     lenfit = len(fitness)
+    assert lenfit > 0, 'Error: fitness array length not positive'
     for i in range(0, lenfit):
         fitSum += fitness[i]
 
@@ -92,7 +93,7 @@ def chooseTheBest(fitness, population):
 
 '''
 
-    EXPERIMENTAL
+    EXPERIMENTAL FUNCTION
 
 '''
 def isAlgorithmDone(fitness, proportion):
@@ -180,7 +181,7 @@ def executeGeneticAlgoritm(fitnessFunction, lengthOfChromosome = 12, sizeOfPopul
         if generateInfoFile:
             del genInfo[:]
 
-        if genNumber >= 100:
+        if genNumber >= 30:
             if generateInfoFile:
                 outFile.close()
             break
