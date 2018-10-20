@@ -109,7 +109,11 @@ def decodeGenotype(person):
 
     return phenotype
 
-def getLinksLoad(phenotype):
+def isFlowOnLink(flow, link, nidx):
+    return flow[nidx] == link[0] and flow[nidx + 1] == link[1] or \
+           flow[nidx] == link[1] and flow[nidx + 1] == link[0]
+
+def getNetworkLoad(phenotype):
     global links
     global linksCapacities
     global streams
@@ -120,35 +124,30 @@ def getLinksLoad(phenotype):
     for i in range(0, len(phenotype)):
         paths.append(streamsPaths[i][phenotype[i]])
 
-    linksLoad = []
+    linksTraffic = 0
     for i in range(0, len(links)):
-        linksLoad.append(0)
-
-    for i in range(0, len(links)):
-        sum = 0
         for j in range(0, len(paths)):
             for k in range(0, len(paths[j]) - 1):
-                if paths[j][k] == links[i][0] and paths[j][k + 1] == links[i][1] or paths[j][k] == links[i][1] and paths[j][k + 1] == links[i][0]:
-                    sum += streams[j][2]
-        linksLoad[i] = float(sum) / linksCapacities[i]
+                if isFlowOnLink(paths[j], links[i], k):
+                    linksTraffic += streams[j][2]
 
-    return linksLoad
+    linksCapacity = 0
+    for i in range(0, len(links)):
+        linksCapacity += linksCapacities[i]
+
+    return float(linksTraffic) / float(linksCapacity)
+
 
 def SDNFitnessFun(person):
     '''Custom controller fitness function'''
-    global linksCapacities
 
     # Decode genotype
     phenotype = decodeGenotype(person)
 
-    # Calculate load for each link
-    linksLoad = getLinksLoad(phenotype)
+    # Calculate network load
+    networkLoad = getNetworkLoad(phenotype)
 
-    sum = 0
-    for i in range(0, len(linksLoad)):
-        sum += linksLoad[i]
-    avr = float(sum) / len(linksLoad)
-    return float(penaltyFun(avr))
+    return float(penaltyFun(networkLoad))
 
 def inputParameter(msg, errorMsg, lowestValid):
     '''Helps input SDN parameters'''
@@ -307,38 +306,17 @@ if __name__ == "__main__":
         '''
 
         # Calculate network loads before and after optimisation
-        # At first we get arrays of links load
-        randomSolutionLinksLoad = getLinksLoad(decodeGenotype(firstBest))
-        bestSolutionLinksLoad = getLinksLoad(decodeGenotype(answer))
+        randomSolutionLoad = getNetworkLoad(decodeGenotype(firstBest)) * 100
+        bestSolutionLoad = getNetworkLoad(decodeGenotype(answer)) * 100
 
-        # Then calculate sums of links load
-        randomSolutionTotalLinksLoad = 0
-        bestSolutionTotalLinksLoad = 0
-        for i in range(0, len(links)):
-            randomSolutionTotalLinksLoad += randomSolutionLinksLoad[i]
-            bestSolutionTotalLinksLoad += bestSolutionLinksLoad[i]
-
-        # And finally, calculate network loads how average links load
-        randomSolutionLoad = float(randomSolutionTotalLinksLoad  / linksNumber * 100)
-        bestSolutionLoad = float(bestSolutionTotalLinksLoad / linksNumber * 100)
-        
         if randomSolutionLoad < bestSolutionLoad:
             inadequateCount += 1
             print("\n!!!INADEQUATE RESULT DETECTED!!!")
 
-        for i in range(0, len(randomSolutionLinksLoad)):
-            randomSolutionLinksLoad[i] = round(randomSolutionLinksLoad[i], 1) * 100
-
-        outputLinkLoads = getLinksLoad(phenotype)
-        for i in range(0, len(outputLinkLoads)):
-            outputLinkLoads[i] = round(outputLinkLoads[i], 1) * 100
-
         print("\nRandom selection of paths: {0}".format(randomPaths))
         print("Best selection of paths: {0}".format(paths))
-        print("Random link loads (%): {0}".format(randomSolutionLinksLoad))
-        print("Best link loads (%): {0}".format(outputLinkLoads))
-        print("Average links load for random generation: {0:.4} %".format(randomSolutionLoad))
-        print("Average links load for selected paths: {0:.4} %".format(bestSolutionLoad))
+        print("Random network load (%): {0:.6}".format(randomSolutionLoad))
+        print("Best network load (%): {0:.6}".format(bestSolutionLoad))
         print("\nExecution time of prepare algorithms equal {0:.6} milliseconds".format(executionPrepareTime * 1000))
         print("Execution time of the genetic algorithm equal {0:.6} milliseconds".format(executionGATime * 1000))
         print("Total execution time equal {0:.6} milliseconds".format(totalExecutionTime * 1000))
