@@ -3,3 +3,6 @@
 
 # Program logs
 *.log
+
+# Compiled files
+*.pyc
