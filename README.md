@@ -1,1 +1,1 @@
-This meant to be application to SDN controller nox/pox/something else that routes streams in network, based result on genetic algorithm logic.
+This supposed to be an application to SDN controller nox/pox/something_else that routes streams in network, based result on genetic algorithm logic. But because of Software Defined Networks death and lack of good documentation this is just a simulation of dynamic routing system.
