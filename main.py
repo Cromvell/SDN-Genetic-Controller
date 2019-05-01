@@ -177,9 +177,9 @@ if __name__ == "__main__":
     print("Welcome to SDN Genetic Algorithm benchmark!")
     nodesNumber = inputParameter("Enter number of nodes in SDN(>=3): ", "Please, enter valid number of nodes", 3)
     linksNumber = 0 # We assign value after generation full topology (linksNumber >= nodesNumber)
+    streamsNumber = inputParameter("Enter number of streams in SDN(>=2): ", "Please, enter valid number of streams", 2) #TODO: Fix issue with one stream in the network
     minLinkCapacity = inputParameter("Enter minimum link capacity(must be not less than 10): ", "Please, enter valid number of minimum link capacity", 10)
     maxLinkCapacity = inputParameter("Enter maximum link capacity(>(minLinkCap + 20)): ", "Please, enter valid number of maximum link capacity", minLinkCapacity + 20)
-    streamsNumber = inputParameter("Enter number of streams in SDN(>=2): ", "Please, enter valid number of streams", 2) #TODO: Fix issue with one stream in the network
 
 
     # Generate nodes
@@ -223,6 +223,7 @@ if __name__ == "__main__":
     sumPrepareExecutionTimes = 0
     firstBest = 0
     inadequateCount = 0
+    diffMean = 0
     print("--------------------------------------------------------------------")
     #
     # Algorithm test loop
@@ -312,6 +313,10 @@ if __name__ == "__main__":
         if randomSolutionLoad < bestSolutionLoad:
             inadequateCount += 1
             print("\n!!!INADEQUATE RESULT DETECTED!!!")
+        else:
+            difference = randomSolutionLoad - bestSolutionLoad
+            print("Genetic and random result difference: {0:.3}%".format(difference))
+            diffMean += difference
 
         print("\nRandom selection of paths: {0}".format(randomPaths))
         print("Best selection of paths: {0}".format(paths))
@@ -322,8 +327,10 @@ if __name__ == "__main__":
         print("Total execution time equal {0:.6} milliseconds".format(totalExecutionTime * 1000))
         print("--------------------------------------------------------------------")
 
+    diffMean /= 100
     print("\nSUMMARY:")
     print("Average execution time of prepare algorithms equal {0:.6} milliseconds".format(sumPrepareExecutionTimes * 1000 / 100))
     print("Average execution time of the genetic algorithm equal {0:.6} milliseconds".format(sumGAExecutionTimes * 1000 / 100))
     print("Average total execution time equal {0:.6} milliseconds".format(sumTotalExecutionTimes * 1000 / 100))
     print("Number of inadequate results: {0}".format(inadequateCount))
+    print("Genetic and random mean result difference: {0:.3}%".format(diffMean))
